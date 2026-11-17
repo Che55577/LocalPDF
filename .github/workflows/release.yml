@@ -81,12 +81,12 @@ jobs:
           tagName: v__VERSION__
           releaseName: "LocalPDF v__VERSION__"
           releaseBody: |
-            ### 📥 下載指南 (Download Guide)
-            - **Windows (x64)**：下載 `LocalPDF_*_x64-setup.exe`
-            - **macOS (Apple Silicon)**：下載 `LocalPDF_*_aarch64.dmg`
-            - **Linux (x64)**：下載 `LocalPDF_*_amd64.deb` 或 `.AppImage`
-            - **選用擴充包（PDF 轉 Word）**：下載對應平台的 `localpdf-pyext-*.zip`，開啟 LocalPDF 後點擊視窗下方 **「匯入擴充包 (.zip)」** 即可一鍵免權限啟用。
-            - **供應鏈校驗**：所有安裝檔與擴充包之雜湊值均記錄於 `SHA256SUMS.txt`，並附帶 GitHub Sigstore 建置來源證明（可透過 `gh attestation verify <file> --repo Che55577/PDFeditor` 驗證）。
+            ### 📥 Download Guide / 下載指南
+            - **Windows (x64)**: Download `LocalPDF_*_x64-setup.exe`
+            - **macOS (Apple Silicon)**: Download `LocalPDF_*_aarch64.dmg` (if Gatekeeper blocks first launch, run `xattr -cr /Applications/LocalPDF.app`)
+            - **Linux (x64)**: Download `LocalPDF_*_amd64.deb` or `.AppImage`
+            - **Optional PDF-to-Word Pack (`pyext`)**: Download `localpdf-pyext-*.zip` for your OS, then click **"Import Extension (.zip)"** (`匯入擴充包 (.zip)`) inside LocalPDF.
+            - **Supply-Chain Verification**: Checksums are in `SHA256SUMS.txt` with GitHub Sigstore provenance (`gh attestation verify <file> --repo Che55577/LocalPDF`).
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
