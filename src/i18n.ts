@@ -1,6 +1,27 @@
 export type Lang = "zh-TW" | "en";
 
-let currentLang: Lang = "zh-TW";
+export const LANG_STORAGE_KEY = "localpdf.lang";
+
+function detectInitialLang(): Lang {
+  try {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY);
+    if (saved === "zh-TW" || saved === "en") return saved;
+  } catch {
+    // Ignore storage unavailability in restricted contexts.
+  }
+  const navLang =
+    typeof navigator !== "undefined" && typeof navigator.language === "string"
+      ? navigator.language.toLowerCase()
+      : "";
+  if (navLang.startsWith("zh")) return "zh-TW";
+  if (navLang) return "en";
+  return "zh-TW";
+}
+
+let currentLang: Lang = detectInitialLang();
+if (typeof document !== "undefined") {
+  document.documentElement.lang = currentLang === "zh-TW" ? "zh-Hant" : "en";
+}
 
 export function getLang(): Lang {
   return currentLang;
@@ -8,6 +29,11 @@ export function getLang(): Lang {
 
 export function toggleLang(): Lang {
   currentLang = currentLang === "zh-TW" ? "en" : "zh-TW";
+  try {
+    localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+  } catch {
+    // Ignore storage unavailability.
+  }
   document.documentElement.lang = currentLang === "zh-TW" ? "zh-Hant" : "en";
   return currentLang;
 }
@@ -71,6 +97,24 @@ export const UI_TEXT = {
     orgSelectAll: "全選",
     orgClearSel: "全不選",
     orgResetOrder: "重設順序",
+    cancelling: "正在取消操作…",
+    clearedAll: "已清除所有暫存結果。",
+    stepProgress: (index: number, total: number, name: string, filePart: string) =>
+      `步驟 ${index + 1}/${total}：${name}${filePart}`,
+    singleProgress: (name: string, filePart: string) => `處理中：${name}${filePart}`,
+    fileProgressPart: (fileIndex: number, fileTotal: number) =>
+      `（檔案 ${fileIndex + 1}/${fileTotal}）`,
+    noFonts: "找不到可用的字型，浮水印與頁碼無法使用。",
+    gsMissing: "Ghostscript 缺失（壓縮／轉圖／修復無法使用）",
+    qpdfMissing: "qpdf 缺失（加解密無法使用）",
+    loMissing: "未偵測到 LibreOffice（Office 轉 PDF 無法使用）",
+    pyextMissing: "未安裝擴充包（PDF 轉 Word 無法使用）",
+    undoEmpty: "這一頁沒有可以移除的註記。",
+    undoDone: "已移除最後加入的註記。",
+    editorClosed: "已關閉編輯器，未儲存的變更已丟棄。",
+    redactedSaved: (count: number) =>
+      `已套用 ${count} 塊塗黑並完整重寫檔案，被塗掉的內容不會留在檔案裡。請在下方清單儲存。`,
+    annotatedSaved: "已產生註記後的檔案，請在下方清單儲存。尚未存檔前只存在暫存區。",
   },
   en: {
     sub: "Files never leave this device. Temporary outputs are wiped immediately after saving or closing.",
@@ -100,5 +144,24 @@ export const UI_TEXT = {
     orgSelectAll: "Select All",
     orgClearSel: "Clear Selection",
     orgResetOrder: "Reset Order",
+    cancelling: "Cancelling…",
+    clearedAll: "Cleared all temporary results.",
+    stepProgress: (index: number, total: number, name: string, filePart: string) =>
+      `Step ${index + 1}/${total}: ${name}${filePart}`,
+    singleProgress: (name: string, filePart: string) => `Processing: ${name}${filePart}`,
+    fileProgressPart: (fileIndex: number, fileTotal: number) =>
+      ` (file ${fileIndex + 1}/${fileTotal})`,
+    noFonts: "No system fonts found. Watermark and page numbers are unavailable.",
+    gsMissing: "Ghostscript missing (compress/render/repair unavailable)",
+    qpdfMissing: "qpdf missing (encrypt/decrypt unavailable)",
+    loMissing: "LibreOffice not detected (Office to PDF unavailable)",
+    pyextMissing: "Extension not installed (PDF to Word unavailable)",
+    undoEmpty: "No annotations to undo on this page.",
+    undoDone: "Removed the last annotation.",
+    editorClosed: "Editor closed; unsaved changes were discarded.",
+    redactedSaved: (count: number) =>
+      `Applied ${count} redaction(s) and rewrote the PDF. Removed content is gone from the file. Save from the list below.`,
+    annotatedSaved:
+      "Annotated PDF generated in volatile temp storage. Save it from the list below.",
   },
 };

@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "LocalPDF － 本機離線 PDF 工具箱",
+        "title": "LocalPDF",
         "width": 900,
         "height": 680,
         "minWidth": 620,

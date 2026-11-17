@@ -1172,19 +1172,20 @@ $<HTMLButtonElement>("edZoomOut").onclick = () => {
   void edRender();
 };
 $<HTMLButtonElement>("edUndo").onclick = async () => {
+  const ui = UI_TEXT[getLang()];
   if (!editor?.undoLast()) {
-    setStatus("這一頁沒有可以移除的註記。");
+    setStatus(ui.undoEmpty);
     return;
   }
   await edRender();
-  setStatus("已移除最後加入的註記。");
+  setStatus(ui.undoDone);
 };
 $<HTMLButtonElement>("edModeText").onclick = () => edSetMode("text");
 $<HTMLButtonElement>("edModeInk").onclick = () => edSetMode("ink");
 $<HTMLButtonElement>("edModeRedact").onclick = () => edSetMode("redact");
 $<HTMLButtonElement>("edClose").onclick = () => {
   edClose();
-  setStatus("已關閉編輯器，未儲存的變更已丟棄。");
+  setStatus(UI_TEXT[getLang()].editorClosed);
 };
 /** 高效將二進位資料轉為 Base64，避免大檔單字節字串拼接造成的記憶體膨脹或長度上限崩潰 */
 async function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
@@ -1213,11 +1214,8 @@ $<HTMLButtonElement>("edSave").onclick = async () => {
     });
     results = [...results, result];
     edClose();
-    setStatus(
-      redacted > 0
-        ? `已套用 ${redacted} 塊塗黑並完整重寫檔案，被塗掉的內容不會留在檔案裡。請在下方清單儲存。`
-        : "已產生註記後的檔案，請在下方清單儲存。尚未存檔前只存在暫存區。",
-    );
+    const ui = UI_TEXT[getLang()];
+    setStatus(redacted > 0 ? ui.redactedSaved(redacted) : ui.annotatedSaved);
   } catch (e) {
     setStatus(e instanceof Error ? e.message : String(e));
   }
@@ -1247,6 +1245,7 @@ function applyLang() {
   $<HTMLInputElement>("toolFilter").placeholder = ui.filterPlaceholder;
   buildToolCards();
   filterTools($<HTMLInputElement>("toolFilter").value);
+  if (lastEngines) renderEngines(lastEngines);
   render();
 }
 
@@ -1258,14 +1257,14 @@ langBtn.onclick = () => {
 runBtn.onclick = runAll;
 cancelBtn.onclick = () => {
   void invoke("cancel_pipeline");
-  setStatus(getLang() === "zh-TW" ? "正在取消操作…" : "Cancelling…");
+  setStatus(UI_TEXT[getLang()].cancelling);
 };
 saveAllBtn.onclick = saveAll;
 clearBtn.onclick = async () => {
   await invoke("discard_all");
   files = [];
   results = [];
-  setStatus(getLang() === "zh-TW" ? "已清除所有暫存結果。" : "Cleared all temporary results.");
+  setStatus(UI_TEXT[getLang()].clearedAll);
   render();
 };
 
@@ -1340,15 +1339,16 @@ try {
   listen<{ index: number; total: number; name: string; fileIndex?: number; fileTotal?: number }>(
     "op:progress",
     (e) => {
+      const ui = UI_TEXT[getLang()];
       const { index, total, name, fileIndex, fileTotal } = e.payload;
       const filePart =
         fileTotal && fileTotal > 1 && typeof fileIndex === "number"
-          ? `（檔案 ${fileIndex + 1}/${fileTotal}）`
+          ? ui.fileProgressPart(fileIndex, fileTotal)
           : "";
       setStatus(
         total > 1
-          ? `步驟 ${index + 1}/${total}：${name}${filePart}`
-          : `處理中：${name}${filePart}`,
+          ? ui.stepProgress(index, total, name, filePart)
+          : ui.singleProgress(name, filePart),
       );
     },
   );
@@ -1374,7 +1374,7 @@ async function loadFonts() {
       sel.append(opt);
     }
   }
-  if (fonts.length === 0) setStatus("找不到可用的字型，浮水印與頁碼無法使用。");
+  if (fonts.length === 0) setStatus(UI_TEXT[getLang()].noFonts);
 }
 
 interface Engines {
@@ -1384,18 +1384,28 @@ interface Engines {
   qpdf: string | null;
 }
 
-async function showEngines() {
-  const e = await invoke<Engines>("engine_status");
+let lastEngines: Engines | null = null;
+
+function renderEngines(e: Engines) {
+  const lang = getLang();
+  const ui = UI_TEXT[lang];
+  const sep = lang === "zh-TW" ? "　·　" : " · ";
   const parts = [
-    e.ghostscript ? `Ghostscript ${e.ghostscript}` : "Ghostscript 缺失（壓縮／轉圖／修復無法使用）",
-    e.qpdf ?? "qpdf 缺失（加解密無法使用）",
+    e.ghostscript ? `Ghostscript ${e.ghostscript}` : ui.gsMissing,
+    e.qpdf ?? ui.qpdfMissing,
     // 後兩者不隨程式打包，沒有是正常情況，不該顯示成錯誤。
-    e.libreoffice ?? "未偵測到 LibreOffice（Office 轉 PDF 無法使用）",
-    e.pyext ?? "未安裝擴充包（PDF 轉 Word 無法使用）",
+    e.libreoffice ?? ui.loMissing,
+    e.pyext ?? ui.pyextMissing,
   ];
-  engineEl.textContent = parts.join("　·　");
+  engineEl.textContent = parts.join(sep);
   engineEl.className = e.ghostscript ? "engine ok" : "engine bad";
   installPyextBtn.hidden = Boolean(e.pyext);
+}
+
+async function showEngines() {
+  const e = await invoke<Engines>("engine_status");
+  lastEngines = e;
+  renderEngines(e);
 }
 
 installPyextBtn.onclick = async () => {

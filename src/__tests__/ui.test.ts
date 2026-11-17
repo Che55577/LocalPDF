@@ -1,7 +1,15 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import indexHtml from "../../index.html?raw";
-import { getLang, GROUP_I18N, TOOL_I18N, UI_TEXT } from "../i18n";
+import { GROUP_I18N, LANG_STORAGE_KEY, TOOL_I18N, UI_TEXT } from "../i18n";
+
+function resetBodyFromIndexHtml() {
+  const parsed = new DOMParser().parseFromString(indexHtml, "text/html");
+  for (const script of parsed.body.querySelectorAll("script")) {
+    script.remove();
+  }
+  document.body.innerHTML = parsed.body.innerHTML;
+}
 
 const invokeMock = vi.fn();
 const openMock = vi.fn();
@@ -32,18 +40,16 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 
 describe("LocalPDF Frontend & UI Integration Tests", () => {
   let pyextState: string | null = null;
+  let activeI18n: typeof import("../i18n");
 
   beforeEach(async () => {
     vi.clearAllMocks();
     pyextState = null;
+    localStorage.clear();
+    Object.defineProperty(navigator, "language", { value: "zh-TW", configurable: true });
 
-    const bodyMatch = /<body>([\s\S]*?)<\/body>/i.exec(indexHtml);
-    const bodyHtml = (bodyMatch ? bodyMatch[1] : indexHtml).replace(
-      /<script\b[^>]*>[\s\S]*?<\/script>/gi,
-      "",
-    );
     document.documentElement.lang = "zh-Hant";
-    document.body.innerHTML = bodyHtml;
+    resetBodyFromIndexHtml();
 
     invokeMock.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
       switch (cmd) {
@@ -82,6 +88,7 @@ describe("LocalPDF Frontend & UI Integration Tests", () => {
     });
 
     vi.resetModules();
+    activeI18n = await import("../i18n");
     await import("../main");
     await new Promise((r) => setTimeout(r, 20));
   });
@@ -103,7 +110,7 @@ describe("LocalPDF Frontend & UI Integration Tests", () => {
     const browseBtn = document.getElementById("browse") as HTMLButtonElement;
     const installBtn = document.getElementById("installPyext") as HTMLButtonElement;
 
-    expect(getLang()).toBe("zh-TW");
+    expect(activeI18n.getLang()).toBe("zh-TW");
     expect(browseBtn.textContent).toBe("選擇檔案");
     expect(installBtn.textContent).toBe("匯入擴充包 (.zip)");
 
@@ -220,5 +227,28 @@ describe("LocalPDF Frontend & UI Integration Tests", () => {
     )!;
     card3Right.click();
     expect(extractField.value).toBe("2, 1, 3, 4, 5".replace("2, ", ""));
+  });
+
+  it("auto-detects English when navigator.language is non-Chinese and persists toggled preference", async () => {
+    localStorage.clear();
+    Object.defineProperty(navigator, "language", { value: "en-US", configurable: true });
+    resetBodyFromIndexHtml();
+
+    vi.resetModules();
+    const freshI18n = await import("../i18n");
+    await import("../main");
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(freshI18n.getLang()).toBe("en");
+    expect(document.documentElement.lang).toBe("en");
+    expect((document.getElementById("browse") as HTMLButtonElement).textContent).toBe("Browse files");
+    expect((document.getElementById("engine") as HTMLElement).textContent).toContain(
+      "Extension not installed",
+    );
+
+    const langBtn = document.getElementById("langToggle") as HTMLButtonElement;
+    langBtn.click();
+    expect(freshI18n.getLang()).toBe("zh-TW");
+    expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe("zh-TW");
   });
 });
