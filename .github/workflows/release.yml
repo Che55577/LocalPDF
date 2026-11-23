@@ -74,7 +74,7 @@ jobs:
         run: npm run fetch:vendor
 
       - name: 打包 Tauri 安裝檔並發佈至 GitHub Release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
